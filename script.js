@@ -147,11 +147,19 @@ function initContactForm() {
                 formObject[key] = value;
             });
             
-            // Simulate form submission
-            showNotification('Thank you for your message! We\'ll get back to you soon.', 'success');
+            // Track form submission
+            trackEvent('contact_form_submit', formObject.service || 'general');
             
-            // Reset form
-            this.reset();
+            // WhatsApp integration option
+            const whatsappOption = confirm('Would you like to continue this conversation on WhatsApp for faster response?');
+            if (whatsappOption) {
+                sendToWhatsApp(formObject);
+            } else {
+                // Simulate form submission
+                showNotification('Thank you for your message! We\'ll get back to you soon.', 'success');
+                // Reset form
+                this.reset();
+            }
         });
     }
     
@@ -496,3 +504,238 @@ const debouncedScrollHandler = debounce(() => {
 }, 16); // ~60fps
 
 window.addEventListener('scroll', debouncedScrollHandler);
+
+// Visitor Tracking System
+class VisitorTracker {
+    constructor() {
+        this.sessionId = this.generateSessionId();
+        this.startTime = Date.now();
+        this.pageViews = 0;
+        this.events = [];
+        this.init();
+    }
+    
+    generateSessionId() {
+        return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    }
+    
+    init() {
+        this.trackPageView();
+        this.trackTimeOnSite();
+        this.trackScroll();
+        this.updateVisitorCounter();
+        this.trackUserAgent();
+    }
+    
+    trackPageView() {
+        this.pageViews++;
+        this.trackEvent('page_view', {
+            url: window.location.href,
+            title: document.title,
+            timestamp: new Date().toISOString()
+        });
+    }
+    
+    trackEvent(eventName, data = {}) {
+        const event = {
+            sessionId: this.sessionId,
+            eventName,
+            data,
+            timestamp: new Date().toISOString(),
+            url: window.location.href
+        };
+        
+        this.events.push(event);
+        this.saveToLocalStorage();
+        
+        // Log to console for development (remove in production)
+        console.log('Event tracked:', event);
+        
+        // Send to Google Analytics if available
+        if (typeof gtag !== 'undefined') {
+            gtag('event', eventName, data);
+        }
+    }
+    
+    trackTimeOnSite() {
+        setInterval(() => {
+            const timeOnSite = Math.floor((Date.now() - this.startTime) / 1000);
+            if (timeOnSite % 30 === 0) { // Track every 30 seconds
+                this.trackEvent('time_on_site', { seconds: timeOnSite });
+            }
+        }, 1000);
+    }
+    
+    trackScroll() {
+        let maxScroll = 0;
+        const debouncedScrollTracker = debounce(() => {
+            const scrollPercent = Math.round(
+                (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100
+            );
+            
+            if (scrollPercent > maxScroll) {
+                maxScroll = scrollPercent;
+                if (scrollPercent >= 25 && scrollPercent < 50) {
+                    this.trackEvent('scroll_depth', { percent: 25 });
+                } else if (scrollPercent >= 50 && scrollPercent < 75) {
+                    this.trackEvent('scroll_depth', { percent: 50 });
+                } else if (scrollPercent >= 75 && scrollPercent < 100) {
+                    this.trackEvent('scroll_depth', { percent: 75 });
+                } else if (scrollPercent >= 100) {
+                    this.trackEvent('scroll_depth', { percent: 100 });
+                }
+            }
+        }, 500);
+        
+        window.addEventListener('scroll', debouncedScrollTracker);
+    }
+    
+    trackUserAgent() {
+        const ua = navigator.userAgent;
+        const data = {
+            userAgent: ua,
+            language: navigator.language,
+            platform: navigator.platform,
+            cookieEnabled: navigator.cookieEnabled,
+            screenResolution: `${screen.width}x${screen.height}`,
+            viewportSize: `${window.innerWidth}x${window.innerHeight}`
+        };
+        
+        this.trackEvent('user_info', data);
+    }
+    
+    updateVisitorCounter() {
+        // Simple visitor counter (this is just for display)
+        let visitorCount = localStorage.getItem('visitor_count') || Math.floor(Math.random() * 1000) + 500;
+        visitorCount = parseInt(visitorCount) + 1;
+        localStorage.setItem('visitor_count', visitorCount);
+        
+        const counterElement = document.getElementById('visitorCount');
+        if (counterElement) {
+            counterElement.textContent = visitorCount;
+        }
+    }
+    
+    saveToLocalStorage() {
+        try {
+            localStorage.setItem('visitor_data', JSON.stringify({
+                sessionId: this.sessionId,
+                events: this.events.slice(-50), // Keep only last 50 events
+                lastUpdate: Date.now()
+            }));
+        } catch (e) {
+            console.warn('Could not save visitor data to localStorage:', e);
+        }
+    }
+    
+    getVisitorStats() {
+        return {
+            sessionId: this.sessionId,
+            pageViews: this.pageViews,
+            timeOnSite: Math.floor((Date.now() - this.startTime) / 1000),
+            eventsCount: this.events.length,
+            lastEvent: this.events[this.events.length - 1]
+        };
+    }
+}
+
+// WhatsApp Integration Functions
+function sendToWhatsApp(formData) {
+    const phoneNumber = '919579091333'; // Replace with your actual WhatsApp number
+    
+    let message = `Hi! I'm interested in your services.\n\n`;
+    message += `Name: ${formData.name}\n`;
+    message += `Email: ${formData.email}\n`;
+    message += `Service Needed: ${formData.service}\n`;
+    message += `Message: ${formData.message}\n\n`;
+    message += `I filled out the contact form on your website and would like to discuss further.`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+    
+    // Track WhatsApp click
+    trackEvent('whatsapp_contact', {
+        service: formData.service,
+        method: 'form_integration'
+    });
+    
+    window.open(whatsappUrl, '_blank');
+}
+
+function createWhatsAppButton() {
+    const whatsappBtn = document.querySelector('.whatsapp-button');
+    if (whatsappBtn) {
+        // Update with your actual WhatsApp number
+        const phoneNumber = '919579091333';
+        const defaultMessage = 'Hi! I found your website and I\'m interested in your digital services. Can we discuss my project?';
+        
+        whatsappBtn.href = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(defaultMessage)}`;
+        
+        whatsappBtn.addEventListener('click', () => {
+            trackEvent('whatsapp_contact', {
+                method: 'floating_button',
+                source: 'website'
+            });
+        });
+    }
+}
+
+// Analytics Dashboard (for admin use)
+function showVisitorDashboard() {
+    const stats = visitorTracker.getVisitorStats();
+    const data = JSON.parse(localStorage.getItem('visitor_data') || '{}');
+    
+    console.group('📊 Visitor Analytics Dashboard');
+    console.log('Current Session:', stats);
+    console.log('Stored Data:', data);
+    console.log('Recent Events:', data.events?.slice(-10) || []);
+    console.groupEnd();
+    
+    return { stats, data };
+}
+
+// Global tracking function
+function trackEvent(eventName, data = {}) {
+    if (window.visitorTracker) {
+        window.visitorTracker.trackEvent(eventName, data);
+    }
+}
+
+// Initialize visitor tracking when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize visitor tracker
+    window.visitorTracker = new VisitorTracker();
+    
+    // Set up WhatsApp button
+    createWhatsAppButton();
+    
+    // Track button clicks
+    document.addEventListener('click', function(e) {
+        const target = e.target;
+        
+        if (target.matches('.btn-primary, .btn-secondary, .cta-button')) {
+            trackEvent('button_click', {
+                buttonText: target.textContent.trim(),
+                buttonClass: target.className
+            });
+        }
+        
+        if (target.matches('.nav-link')) {
+            trackEvent('navigation_click', {
+                section: target.getAttribute('href'),
+                linkText: target.textContent.trim()
+            });
+        }
+        
+        if (target.matches('.service-card, .portfolio-item')) {
+            trackEvent('content_interaction', {
+                type: target.matches('.service-card') ? 'service' : 'portfolio',
+                content: target.querySelector('h3')?.textContent || 'unknown'
+            });
+        }
+    });
+});
+
+// Export functions for console access (development only)
+window.showVisitorDashboard = showVisitorDashboard;
+window.trackEvent = trackEvent;

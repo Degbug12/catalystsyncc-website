@@ -6,6 +6,30 @@
     <title>Catalystsyncc Media - Digital Solutions</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'GA_MEASUREMENT_ID');
+    </script>
+    
+    <!-- Visitor Counter -->
+    <style>
+        .visitor-counter {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: var(--card-bg);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -399,5 +423,14 @@
     </footer>
 
     <script src="script.js"></script>
+    <!-- WhatsApp Contact Button -->
+    <a href="https://wa.me/YOUR_NUMBER" class="whatsapp-button" target="_blank">Chat with us on WhatsApp</a>
+    
+    <div class="visitor-counter">Visitors: <span id="visitorCount">0</span></div>
+
+    <script>
+        // Example Counter (This should be replaced with your actual logic)
+        document.getElementById('visitorCount').textContent = Math.floor(Math.random() * 1000);
+    </script>
 </body>
 </html>
