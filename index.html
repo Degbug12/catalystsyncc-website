@@ -426,11 +426,57 @@
     <!-- WhatsApp Contact Button -->
     <a href="https://wa.me/YOUR_NUMBER" class="whatsapp-button" target="_blank">Chat with us on WhatsApp</a>
     
-    <div class="visitor-counter">Visitors: <span id="visitorCount">0</span></div>
+    <div class="visitor-counter">
+        <div class="counter-item">
+            <span class="counter-label">👥 Visitors:</span>
+            <span id="visitorCount" class="counter-value">0</span>
+        </div>
+        <div class="counter-item">
+            <span class="counter-label">📊 Views:</span>
+            <span id="pageViewCount" class="counter-value">0</span>
+        </div>
+        <div class="counter-item">
+            <span class="counter-label">⏱️ Online:</span>
+            <span id="timeOnSite" class="counter-value">0s</span>
+        </div>
+    </div>
 
-    <script>
-        // Example Counter (This should be replaced with your actual logic)
-        document.getElementById('visitorCount').textContent = Math.floor(Math.random() * 1000);
-    </script>
+    <!-- Analytics Dashboard Button (for admin) -->
+    <button id="analyticsToggle" class="analytics-toggle" onclick="toggleAnalyticsDashboard()" title="View Analytics Dashboard">
+        📊
+    </button>
+
+    <!-- Analytics Dashboard -->
+    <div id="analyticsDashboard" class="analytics-dashboard" style="display: none;">
+        <div class="dashboard-header">
+            <h3>📊 Real-Time Analytics</h3>
+            <button onclick="closeAnalyticsDashboard()" class="close-btn">×</button>
+        </div>
+        <div class="dashboard-content">
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <h4>📈 Current Session</h4>
+                    <div id="sessionStats"></div>
+                </div>
+                <div class="analytics-card">
+                    <h4>👥 Visitor Statistics</h4>
+                    <div id="visitorStats"></div>
+                </div>
+                <div class="analytics-card">
+                    <h4>🎯 User Interactions</h4>
+                    <div id="interactionStats"></div>
+                </div>
+                <div class="analytics-card">
+                    <h4>📱 Device Information</h4>
+                    <div id="deviceStats"></div>
+                </div>
+            </div>
+            <div class="analytics-actions">
+                <button onclick="exportAnalytics()" class="export-btn">📤 Export Data</button>
+                <button onclick="clearAnalytics()" class="clear-btn">🗑️ Clear Data</button>
+                <button onclick="refreshDashboard()" class="refresh-btn">🔄 Refresh</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

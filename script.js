@@ -605,15 +605,90 @@ class VisitorTracker {
     }
     
     updateVisitorCounter() {
-        // Simple visitor counter (this is just for display)
-        let visitorCount = localStorage.getItem('visitor_count') || Math.floor(Math.random() * 1000) + 500;
-        visitorCount = parseInt(visitorCount) + 1;
-        localStorage.setItem('visitor_count', visitorCount);
+        // Get or initialize visitor data
+        const visitorData = this.getStoredVisitorData();
         
+        // Check if this is a new unique visitor (based on longer timeframe)
+        const now = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        // If last visit was more than 24 hours ago, count as new visitor
+        if (!visitorData.lastVisit || (now - visitorData.lastVisit) > oneDay) {
+            visitorData.totalVisitors += 1;
+            visitorData.uniqueVisitors += 1;
+        }
+        
+        // Always increment page views
+        visitorData.totalPageViews += 1;
+        
+        // Update session data
+        visitorData.lastVisit = now;
+        visitorData.currentSession = {
+            sessionId: this.sessionId,
+            startTime: this.startTime,
+            pageViews: this.pageViews
+        };
+        
+        // Save updated data
+        localStorage.setItem('true_visitor_analytics', JSON.stringify(visitorData));
+        
+        // Update counter display
         const counterElement = document.getElementById('visitorCount');
         if (counterElement) {
-            counterElement.textContent = visitorCount;
+            counterElement.textContent = visitorData.totalVisitors;
         }
+        
+        // Update analytics display if dashboard is open
+        this.updateAnalyticsDashboard(visitorData);
+    }
+    
+    getStoredVisitorData() {
+        try {
+            const stored = localStorage.getItem('true_visitor_analytics');
+            if (stored) {
+                return JSON.parse(stored);
+            }
+        } catch (e) {
+            console.warn('Could not parse stored visitor data:', e);
+        }
+        
+        // Return default structure for new visitors
+        return {
+            totalVisitors: 0,
+            uniqueVisitors: 0,
+            totalPageViews: 0,
+            firstVisit: Date.now(),
+            lastVisit: null,
+            sessions: [],
+            topPages: {},
+            referrers: {},
+            devices: {},
+            locations: {}
+        };
+    }
+    
+    updateAnalyticsDashboard(visitorData) {
+        // Store analytics for dashboard
+        const analytics = {
+            ...visitorData,
+            currentSession: {
+                sessionId: this.sessionId,
+                startTime: this.startTime,
+                duration: Math.floor((Date.now() - this.startTime) / 1000),
+                pageViews: this.pageViews,
+                events: this.events.length
+            },
+            browserInfo: {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                screenResolution: `${screen.width}x${screen.height}`,
+                viewportSize: `${window.innerWidth}x${window.innerHeight}`
+            }
+        };
+        
+        // Store for dashboard access
+        window._visitorAnalytics = analytics;
     }
     
     saveToLocalStorage() {
@@ -736,6 +811,158 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Export functions for console access (development only)
+// Enhanced Analytics Dashboard Functions
+function updateAnalyticsDisplay() {
+    const analytics = window._visitorAnalytics;
+    if (!analytics) return;
+    
+    // Update live counters
+    document.getElementById('visitorCount').textContent = analytics.totalVisitors;
+    document.getElementById('pageViewCount').textContent = analytics.totalPageViews;
+    
+    // Update time on site
+    const timeOnSite = Math.floor((Date.now() - analytics.currentSession.startTime) / 1000);
+    const minutes = Math.floor(timeOnSite / 60);
+    const seconds = timeOnSite % 60;
+    document.getElementById('timeOnSite').textContent = `${minutes}m ${seconds}s`;
+}
+
+function toggleAnalyticsDashboard() {
+    const dashboard = document.getElementById('analyticsDashboard');
+    const isVisible = dashboard.style.display !== 'none';
+    
+    if (isVisible) {
+        dashboard.style.display = 'none';
+    } else {
+        dashboard.style.display = 'block';
+        refreshDashboard();
+    }
+}
+
+function closeAnalyticsDashboard() {
+    document.getElementById('analyticsDashboard').style.display = 'none';
+}
+
+function refreshDashboard() {
+    const analytics = window._visitorAnalytics;
+    if (!analytics) return;
+    
+    // Session Stats
+    const sessionStats = document.getElementById('sessionStats');
+    if (sessionStats) {
+        const sessionDuration = Math.floor((Date.now() - analytics.currentSession.startTime) / 1000);
+        sessionStats.innerHTML = `
+            <p>Session ID: <span class="stat-highlight">${analytics.currentSession.sessionId}</span></p>
+            <p>Duration: <span class="stat-highlight">${Math.floor(sessionDuration/60)}m ${sessionDuration%60}s</span></p>
+            <p>Page Views: <span class="stat-highlight">${analytics.currentSession.pageViews}</span></p>
+            <p>Events: <span class="stat-highlight">${analytics.currentSession.events}</span></p>
+        `;
+    }
+    
+    // Visitor Stats
+    const visitorStats = document.getElementById('visitorStats');
+    if (visitorStats) {
+        visitorStats.innerHTML = `
+            <p>Total Visitors: <span class="stat-highlight">${analytics.totalVisitors}</span></p>
+            <p>Unique Visitors: <span class="stat-highlight">${analytics.uniqueVisitors}</span></p>
+            <p>Total Page Views: <span class="stat-highlight">${analytics.totalPageViews}</span></p>
+            <p>First Visit: <span class="stat-highlight">${new Date(analytics.firstVisit).toLocaleDateString()}</span></p>
+        `;
+    }
+    
+    // Interaction Stats
+    const interactionStats = document.getElementById('interactionStats');
+    if (interactionStats && window.visitorTracker) {
+        const events = window.visitorTracker.events;
+        const buttonClicks = events.filter(e => e.eventName === 'button_click').length;
+        const navClicks = events.filter(e => e.eventName === 'navigation_click').length;
+        const whatsappClicks = events.filter(e => e.eventName === 'whatsapp_contact').length;
+        const formSubmits = events.filter(e => e.eventName === 'contact_form_submit').length;
+        
+        interactionStats.innerHTML = `
+            <p>Button Clicks: <span class="stat-highlight">${buttonClicks}</span></p>
+            <p>Navigation: <span class="stat-highlight">${navClicks}</span></p>
+            <p>WhatsApp: <span class="stat-highlight">${whatsappClicks}</span></p>
+            <p>Form Submits: <span class="stat-highlight">${formSubmits}</span></p>
+        `;
+    }
+    
+    // Device Stats
+    const deviceStats = document.getElementById('deviceStats');
+    if (deviceStats) {
+        deviceStats.innerHTML = `
+            <p>Platform: <span class="stat-highlight">${analytics.browserInfo.platform}</span></p>
+            <p>Language: <span class="stat-highlight">${analytics.browserInfo.language}</span></p>
+            <p>Screen: <span class="stat-highlight">${analytics.browserInfo.screenResolution}</span></p>
+            <p>Viewport: <span class="stat-highlight">${analytics.browserInfo.viewportSize}</span></p>
+        `;
+    }
+}
+
+function exportAnalytics() {
+    const analytics = window._visitorAnalytics;
+    const visitorData = JSON.parse(localStorage.getItem('true_visitor_analytics') || '{}');
+    const eventData = JSON.parse(localStorage.getItem('visitor_data') || '{}');
+    
+    const exportData = {
+        timestamp: new Date().toISOString(),
+        currentAnalytics: analytics,
+        storedVisitorData: visitorData,
+        eventHistory: eventData,
+        summary: {
+            totalVisitors: analytics?.totalVisitors || 0,
+            totalPageViews: analytics?.totalPageViews || 0,
+            sessionDuration: Math.floor((Date.now() - (analytics?.currentSession?.startTime || Date.now())) / 1000),
+            eventsTracked: eventData.events?.length || 0
+        }
+    };
+    
+    // Create and download JSON file
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analytics-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    trackEvent('analytics_export', {
+        totalVisitors: exportData.summary.totalVisitors,
+        totalEvents: exportData.summary.eventsTracked
+    });
+}
+
+function clearAnalytics() {
+    if (confirm('Are you sure you want to clear all analytics data? This action cannot be undone.')) {
+        localStorage.removeItem('true_visitor_analytics');
+        localStorage.removeItem('visitor_data');
+        
+        // Reset current session
+        if (window.visitorTracker) {
+            window.visitorTracker.events = [];
+        }
+        
+        trackEvent('analytics_cleared', { timestamp: new Date().toISOString() });
+        
+        // Refresh dashboard
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+    }
+}
+
+// Update analytics display every second
+setInterval(updateAnalyticsDisplay, 1000);
+
+// Export functions for console access
 window.showVisitorDashboard = showVisitorDashboard;
 window.trackEvent = trackEvent;
+window.toggleAnalyticsDashboard = toggleAnalyticsDashboard;
+window.closeAnalyticsDashboard = closeAnalyticsDashboard;
+window.refreshDashboard = refreshDashboard;
+window.exportAnalytics = exportAnalytics;
+window.clearAnalytics = clearAnalytics;
